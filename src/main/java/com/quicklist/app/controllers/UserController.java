@@ -2,12 +2,16 @@ package com.quicklist.app.controllers;
 
 import com.quicklist.app.entities.User;
 import com.quicklist.app.services.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @CrossOrigin(originPatterns = {"http://localhost:4200/"})
@@ -33,12 +37,19 @@ public class UserController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<?> createUser(@Valid @RequestBody User user, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return validation(bindingResult);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.save(user));
     }
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
+    public ResponseEntity<?> updateUser(@Valid @RequestBody User user, BindingResult bindingResult, @PathVariable Long id) {
+        if (bindingResult.hasErrors()) {
+            return validation(bindingResult);
+        }
+
         Optional<User> userOptional = userService.findById(id);
         if (userOptional.isPresent()) {
             User newUser = userOptional.orElseThrow();
@@ -60,5 +71,14 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.OK).build();
         }
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    // Metodo de validacion
+    private static ResponseEntity<Map<String, String>> validation(BindingResult bindingResult) {
+        Map<String, String> errors = new HashMap<>();
+        bindingResult.getFieldErrors().forEach(error -> {
+            errors.put(error.getField(), "El campo " + error.getField() + " " + error.getDefaultMessage());
+        });
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 }
